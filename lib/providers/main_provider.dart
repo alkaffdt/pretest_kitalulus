@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class MainProvider extends ChangeNotifier {
   List _masterCountries = [];
+  List _masterContinents = [];
   List _countries = [];
+  List _continents = [];
   List _favouritedCountries = [];
   //
   bool isAlreadyFetched = false;
@@ -17,14 +19,45 @@ class MainProvider extends ChangeNotifier {
   }
 
   List get getCountries {
-    return _countries;
+    List _sortedData = List.from(_countries);
+    _sortedData.sort((a, b) => a["name"].compareTo(b["name"]));
+    return _sortedData;
   }
 
-  set fetchCountries(data) {
-    // Obtain shared preferences.
+  List get getContinents {
+    return _continents;
+  }
 
-    _countries = List.from(data);
-    _masterCountries = List.from(data);
+  Map get sortedCountries {
+    Map<String, List> _sortedByLetter = {};
+    //
+    getCountries.forEach((item) {
+      String firstLetter = item["name"].substring(0, 1);
+
+      if (_sortedByLetter.containsKey(firstLetter)) {
+        _sortedByLetter[firstLetter]?.add(item);
+      } else {
+        _sortedByLetter[firstLetter] = [];
+        _sortedByLetter[firstLetter]?.add(item);
+      }
+    });
+
+    return _sortedByLetter;
+  }
+
+  set fetchCountries(List<Map> continents) {
+    // Obtaincountries preferences.
+    _masterContinents = List.from(continents);
+    _continents = List.from(continents);
+
+    continents.forEach((countries) {
+      countries["countries"].forEach((nation) {
+        nation["continent"] = nation["continent"]["name"];
+        _masterCountries.add(nation);
+      });
+    });
+
+    _countries = List.from(_masterCountries);
     isAlreadyFetched = true;
     //
     fetchFavouritedCountries();
@@ -46,9 +79,6 @@ class MainProvider extends ChangeNotifier {
     _countries = _masterCountries
         .where((item) => item["name"].toLowerCase().contains(keyword))
         .toList();
-
-    debugPrint("isi _countries di provider");
-    debugPrint(_countries.toString());
 
     notifyListeners();
   }

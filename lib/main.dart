@@ -61,6 +61,7 @@ class _RootPageState extends State<RootPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        elevation: 0.5,
         title: appbarTitle,
         actions: [
           Padding(
@@ -83,7 +84,7 @@ class _RootPageState extends State<RootPage> {
               currentPage = index;
             });
             pageController.animateToPage(index,
-                duration: Duration(milliseconds: 333), curve: Curves.bounceIn);
+                duration: Duration(milliseconds: 333), curve: Curves.linear);
           },
           // ignore: prefer_const_literals_to_create_immutables
           items: [
@@ -179,23 +180,98 @@ class _HomePageState extends State<HomePage> {
     return Center(
       child: Consumer<MainProvider>(
         builder: (context, data, _) => Container(
-          child: data.isAlreadyFetched
-              ? listViewCountries(data)
-              : fetchQuery(data),
+          height: MediaQuery.of(context).size.height,
+          width: MediaQuery.of(context).size.width,
+          child: Column(
+            children: [floatingButtons(), Expanded(child: datasView(data))],
+          ),
         ),
       ),
     );
   }
 
+  Widget filteredByContinents(String code) {
+    return Consumer<MainProvider>(builder: (context, data, child) {
+      return ListView.builder(itemBuilder: ((context, continent) {
+        return Container(
+            // bikin slider pake nama/gambar benua
+            );
+      }));
+    });
+  }
+
+  Widget datasView(MainProvider data) {
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      child: data.isAlreadyFetched ? listViewCountries(data) : fetchQuery(data),
+    );
+  }
+
+  Widget floatingButtons() {
+    Widget button(
+        {required String label,
+        required icon,
+        required ontap,
+        isRight = false}) {
+      return SizedBox(
+        height: 55,
+        width: 175,
+        child: TextButton.icon(
+            style: ButtonStyle(
+                overlayColor: MaterialStateProperty.all(Colors.lightBlue),
+                // padding: MaterialStateProperty.all<EdgeInsets>(
+                //     EdgeInsets.symmetric(horizontal: 55)),
+                backgroundColor: MaterialStateProperty.all(Colors.blue),
+                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                    RoundedRectangleBorder(
+                        borderRadius: isRight
+                            ? BorderRadius.only(
+                                bottomRight: Radius.circular(15))
+                            : BorderRadius.only(
+                                bottomLeft: Radius.circular(15)),
+                        side: BorderSide(color: Colors.blue)))),
+            onPressed: () {},
+            icon: Icon(
+              icon,
+              color: Colors.white,
+            ),
+            label: Text(
+              label,
+              style: TextStyle(color: Colors.white),
+            )),
+      );
+    }
+
+    return Container(
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        button(label: "filter", icon: Icons.filter_alt, ontap: () {}),
+        button(label: "sort", icon: Icons.sort, ontap: () {}, isRight: true),
+      ]),
+    );
+  }
+
   Widget fetchQuery(MainProvider data) {
     String _query = """
-          query{
-          countries{
-            code
-            emoji
-            name
-          }
-        }
+      query{
+  continents{
+    name
+    countries{
+    code
+    emoji
+    name
+    states{
+      name
+    }
+    languages{
+      name
+      native
+    }
+    continent{
+        name
+    }
+  }
+  }
+}
     """;
     //
     return Query(
@@ -208,14 +284,18 @@ class _HomePageState extends State<HomePage> {
         }
 
         if (result.isLoading) {
-          return const CircularProgressIndicator();
+          return SizedBox(
+            height: 51,
+            width: 51,
+            child: CircularProgressIndicator(),
+          );
         }
 
         //
         debugPrint("isi data");
         debugPrint(result.data?.keys.toString());
 
-        List? _countries = result.data!["countries"];
+        List? _countries = result.data!["continents"];
 
         if (_countries == null || _countries.length < 1) {
           return const Text("data not found");
@@ -230,33 +310,65 @@ class _HomePageState extends State<HomePage> {
 
   listViewCountries(MainProvider data) {
     return ListView.builder(
-      itemCount: data.getCountries.length,
+      itemCount: data.sortedCountries.length,
       // itemExtent: 100,
-      itemBuilder: (context, index) {
-        return countryItem(index);
+      itemBuilder: (context, indexLetter) {
+        String firstLetter = data.sortedCountries.keys.elementAt(indexLetter);
+        //
+        debugPrint("isi countries per-huruf '${firstLetter}' :");
+        debugPrint(data.sortedCountries[indexLetter].toString());
+
+        return Container(
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 7),
+                // height: 25,
+                width: MediaQuery.of(context).size.width,
+                color: Color.fromARGB(255, 27, 133, 209),
+                child: Text(
+                  firstLetter.toUpperCase(),
+                  style: TextStyle(color: Colors.white, fontSize: 29),
+                ),
+              ),
+              SizedBox(
+                height: 15,
+              ),
+              ListView.builder(
+                  itemCount:
+                      data.sortedCountries.values.elementAt(indexLetter).length,
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemBuilder: (context, indexCountry) {
+                    return countryItem(indexCountry, firstLetter);
+                  }),
+              Divider(),
+            ],
+          ),
+        );
       },
     );
   }
 
-  Widget countryItem(int index) {
+  Widget countryItem(int index, String firstLetter) {
     //
 
     //
     return Consumer<MainProvider>(builder: ((context, data, child) {
       List _countries = List.from(data.getFavouritedCountries);
       //
-      String code = data.getCountries[index]["code"];
-      String name = data.getCountries[index]["name"];
-      String flag = data.getCountries[index]["emoji"];
+      String code = data.sortedCountries[firstLetter][index]["code"];
+      String name = data.sortedCountries[firstLetter][index]["name"];
+      String flag = data.sortedCountries[firstLetter][index]["emoji"];
       bool isFavourited = _countries.contains(data.getCountries[index]);
       //
       makeAsFavourite() {
         if (isFavourited) {
-          data.removeFromFavourite(data.getCountries[index]);
+          data.removeFromFavourite(data.sortedCountries[firstLetter][index]);
           //
 
         } else {
-          data.setAsFavourite(data.getCountries[index]);
+          data.setAsFavourite(data.sortedCountries[firstLetter][index]);
           //
           final snackBar = SnackBar(
             content: Text("$flag $name added to favourites"),
@@ -265,7 +377,7 @@ class _HomePageState extends State<HomePage> {
                 onPressed: () {
                   widget.pageController.animateToPage(1,
                       duration: Duration(milliseconds: 333),
-                      curve: Curves.easeIn);
+                      curve: Curves.linear);
                 }),
           );
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -331,7 +443,7 @@ class FavouritesPage extends StatelessWidget {
                   trailing: IconButton(
                       onPressed: () {
                         data.removeFromFavourite(
-                            data.getCountries[index]["code"]);
+                            data.getFavouritedCountries[index]["code"]);
 
                         final snackBar = SnackBar(
                           behavior: SnackBarBehavior.floating,
