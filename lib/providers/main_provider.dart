@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,8 +12,13 @@ class MainProvider extends ChangeNotifier {
   //
   bool isAlreadyFetched = false;
   //
+  ViewStatus viewStatus = ViewStatus.sort;
   String _filteredContinentCode = "";
-
+  //
+  //
+  //
+  //
+  //
   List get getFavouritedCountries {
     return _favouritedCountries;
   }
@@ -42,7 +48,12 @@ class MainProvider extends ChangeNotifier {
 
   setContinentCode(String code) {
     _filteredContinentCode = code;
-    // notifyListeners();
+    viewStatus = ViewStatus.filter;
+    notifyListeners();
+  }
+
+  List get getContinents {
+    return _masterContinents;
   }
 
   List get filterByContinents {
@@ -60,14 +71,14 @@ class MainProvider extends ChangeNotifier {
     // Obtaincountries preferences.
     _masterContinents = List.from(continents);
 
+    fetchFavouritedCountries();
+
     continents.forEach((countries) {
       countries["countries"].forEach((nation) {
         nation["continent"] = nation["continent"]["name"];
         _masterCountries.add(nation);
       });
     });
-
-    fetchFavouritedCountries();
 
     _countries = List.from(_masterCountries);
     isAlreadyFetched = true;
@@ -108,6 +119,8 @@ class MainProvider extends ChangeNotifier {
 
   sortCountries() {
     //
+    viewStatus = ViewStatus.sort;
+    notifyListeners();
   }
 
   //
@@ -122,10 +135,13 @@ class MainProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  removeFromFavourite(code) {
+  removeFromFavourite(Map country) async {
     //
+    final prefs = await SharedPreferences.getInstance();
 
-    _favouritedCountries.removeWhere((element) => element == code);
+    _favouritedCountries
+        .removeWhere((element) => element["code"] == country["code"]);
+    prefs.setString("storedCountries", jsonEncode(_favouritedCountries));
     notifyListeners();
   }
 }

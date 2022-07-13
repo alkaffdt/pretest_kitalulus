@@ -4,10 +4,12 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:pretest_kitalulus_2/providers/main_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 
 void main() {
   runApp(const MyApp());
@@ -56,6 +58,14 @@ class _RootPageState extends State<RootPage> {
   //
   Widget appbarTitle = Text("Countries App");
   bool clickedSearchButton = false;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    Provider.of<MainProvider>(context, listen: false)
+        .fetchFavouritedCountries();
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +178,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   //
-  bool alreadyFetched = false;
   //
   Widget appbarTitle = const Text("Country App");
   final PageController pageController = PageController();
@@ -194,7 +203,9 @@ class _HomePageState extends State<HomePage> {
     return Container(
       width: MediaQuery.of(context).size.width,
       child: data.isAlreadyFetched
-          ? sortedlistViewCountries(data)
+          ? data.viewStatus == ViewStatus.sort
+              ? sortedlistViewCountries(data)
+              : filteredlistViewCountries()
           : fetchQuery(data),
     );
   }
@@ -222,7 +233,7 @@ class _HomePageState extends State<HomePage> {
                             : BorderRadius.only(
                                 bottomLeft: Radius.circular(15)),
                         side: BorderSide(color: Colors.blue)))),
-            onPressed: () {},
+            onPressed: ontap,
             icon: Icon(
               icon,
               color: Colors.white,
@@ -236,8 +247,48 @@ class _HomePageState extends State<HomePage> {
 
     return Container(
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        button(label: "filter", icon: Icons.filter_alt, ontap: () {}),
-        button(label: "sort", icon: Icons.sort, ontap: () {}, isRight: true),
+        button(
+            label: "filter",
+            icon: Icons.filter_alt,
+            ontap: () {
+              var data = Provider.of<MainProvider>(context, listen: false);
+              showDialog(
+                  context: context,
+                  builder: (BuildContext ctx) {
+                    return AlertDialog(
+                      title: Text("select a continent"),
+                      content: Container(
+                        height: MediaQuery.of(context).size.height * 0.5,
+                        width: MediaQuery.of(context).size.width * 0.71,
+                        child: ListView.builder(
+                            itemCount: data.getContinents.length,
+                            // shrinkWrap: true,
+                            itemBuilder: (context, index) {
+                              String nameContinent =
+                                  data.getContinents[index]["name"];
+                              return ListTile(
+                                leading: Icon(Icons.map),
+                                title: Text(nameContinent),
+                                onTap: () {
+                                  data.setContinentCode(
+                                      data.getContinents[index]["code"]);
+                                  //
+                                  Navigator.pop(context);
+                                },
+                              );
+                            }),
+                      ),
+                    );
+                  });
+            }),
+        button(
+            label: "sort",
+            icon: Icons.sort,
+            ontap: () {
+              var data = Provider.of<MainProvider>(context, listen: false);
+              data.sortCountries();
+            },
+            isRight: true),
       ]),
     );
   }
@@ -277,11 +328,11 @@ class _HomePageState extends State<HomePage> {
         }
 
         if (result.isLoading) {
-          return SizedBox(
-            height: 51,
-            width: 51,
-            child: CircularProgressIndicator(),
-          );
+          return Transform.scale(
+              scale: 0.1,
+              child: CircularProgressIndicator(
+                strokeWidth: 55,
+              ));
         }
 
         //
@@ -296,7 +347,7 @@ class _HomePageState extends State<HomePage> {
 
         updateData(data, _countries);
 
-        return filteredlistViewCountries(data, "AS");
+        return sortedlistViewCountries(data);
       },
     );
   }
@@ -308,8 +359,6 @@ class _HomePageState extends State<HomePage> {
       itemBuilder: (context, indexLetter) {
         String firstLetter = data.sortedCountries.keys.elementAt(indexLetter);
         //
-        debugPrint("isi countries per-huruf '${firstLetter}' :");
-        debugPrint(data.sortedCountries[indexLetter].toString());
 
         return Container(
           child: Column(
@@ -345,17 +394,18 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  filteredlistViewCountries(MainProvider data, String continentCode) {
-    data.setContinentCode(continentCode);
+  filteredlistViewCountries() {
     //
-    return ListView.builder(
-      itemCount: data.filterByContinents.length,
-      // itemExtent: 100,
-      itemBuilder: (context, indexCountry) {
-        //
-        return countryItem(indexCountry);
-      },
-    );
+    return Consumer<MainProvider>(builder: (context, data, _) {
+      return ListView.builder(
+        itemCount: data.filterByContinents.length,
+        // itemExtent: 100,
+        itemBuilder: (context, indexCountry) {
+          //
+          return countryItem(indexCountry);
+        },
+      );
+    });
   }
 
   Widget countryItem(int index,
@@ -368,19 +418,25 @@ class _HomePageState extends State<HomePage> {
       String code;
       String name;
       String flag;
+      bool isFavourited = false;
+
+      // debugPrint("isi data getFavviy saat ini:");
+      // debugPrint(data.getFavouritedCountries.toString());
 
       if (isSorted) {
         code = data.sortedCountries[firstLetter][index]["code"];
         name = data.sortedCountries[firstLetter][index]["name"];
         flag = data.sortedCountries[firstLetter][index]["emoji"];
+        isFavourited = data.getFavouritedCountries
+            .any((element) => element["code"] == code);
       } else {
         code = data.filterByContinents[index]["code"];
         name = data.filterByContinents[index]["name"];
         flag = data.filterByContinents[index]["emoji"];
+        isFavourited = data.getFavouritedCountries
+            .any((element) => element["code"] == code);
       }
 
-      bool isFavourited =
-          data.getFavouritedCountries.contains(data.getCountries[index]);
       //
       makeAsFavourite() {
         if (isFavourited) {
@@ -390,7 +446,6 @@ class _HomePageState extends State<HomePage> {
             data.removeFromFavourite(data.filterByContinents[index]);
           }
           //
-
         } else {
           if (isSorted) {
             data.setAsFavourite(data.sortedCountries[firstLetter][index]);
@@ -473,21 +528,33 @@ class FavouritesPage extends StatelessWidget {
                         data.removeFromFavourite(
                             data.getFavouritedCountries[index]["code"]);
 
-                        final snackBar = SnackBar(
-                          behavior: SnackBarBehavior.floating,
-                          content:
-                              Text("are you sure want to remove $flag $name ?"),
-                          action: SnackBarAction(
-                              label: "confirm",
-                              onPressed: () {
-                                // widget.pageController.animateToPage(1,
-                                //     duration: Duration(milliseconds: 333),
-                                //     curve: Curves.easeIn);
-                                data.removeFromFavourite(
-                                    data.getFavouritedCountries[index]);
-                              }),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                        showDialog(
+                            context: context,
+                            builder: (BuildContext ctx) {
+                              return AlertDialog(
+                                title: Text("select a continent"),
+                                content: Text("""
+are you sure want to delete $flag $name
+"""),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text("NO"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      //
+                                      data.removeFromFavourite(
+                                          data.getFavouritedCountries[index]);
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text("YES"),
+                                  ),
+                                ],
+                              );
+                            });
                       },
                       icon: Icon(
                         Icons.delete,
