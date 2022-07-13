@@ -7,12 +7,11 @@ class MainProvider extends ChangeNotifier {
   List _masterCountries = [];
   List _masterContinents = [];
   List _countries = [];
-  List _continents = [];
   List _favouritedCountries = [];
   //
   bool isAlreadyFetched = false;
   //
-  //
+  String _filteredContinentCode = "";
 
   List get getFavouritedCountries {
     return _favouritedCountries;
@@ -22,10 +21,6 @@ class MainProvider extends ChangeNotifier {
     List _sortedData = List.from(_countries);
     _sortedData.sort((a, b) => a["name"].compareTo(b["name"]));
     return _sortedData;
-  }
-
-  List get getContinents {
-    return _continents;
   }
 
   Map get sortedCountries {
@@ -45,10 +40,25 @@ class MainProvider extends ChangeNotifier {
     return _sortedByLetter;
   }
 
+  setContinentCode(String code) {
+    _filteredContinentCode = code;
+    // notifyListeners();
+  }
+
+  List get filterByContinents {
+    List _filtered = [];
+    //
+    Map _cont = _masterContinents
+        .firstWhere((continent) => continent["code"] == _filteredContinentCode);
+
+    _filtered = _cont["countries"];
+
+    return _filtered;
+  }
+
   set fetchCountries(List<Map> continents) {
     // Obtaincountries preferences.
     _masterContinents = List.from(continents);
-    _continents = List.from(continents);
 
     continents.forEach((countries) {
       countries["countries"].forEach((nation) {
@@ -57,10 +67,11 @@ class MainProvider extends ChangeNotifier {
       });
     });
 
+    fetchFavouritedCountries();
+
     _countries = List.from(_masterCountries);
     isAlreadyFetched = true;
     //
-    fetchFavouritedCountries();
   }
 
   fetchFavouritedCountries() async {
@@ -118,3 +129,7 @@ class MainProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+enum ViewStatus { sort, filter }
+
+enum Continents { asia, africa, europe, america, australia, all }

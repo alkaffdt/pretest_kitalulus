@@ -190,20 +190,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget filteredByContinents(String code) {
-    return Consumer<MainProvider>(builder: (context, data, child) {
-      return ListView.builder(itemBuilder: ((context, continent) {
-        return Container(
-            // bikin slider pake nama/gambar benua
-            );
-      }));
-    });
-  }
-
   Widget datasView(MainProvider data) {
     return Container(
       width: MediaQuery.of(context).size.width,
-      child: data.isAlreadyFetched ? listViewCountries(data) : fetchQuery(data),
+      child: data.isAlreadyFetched
+          ? sortedlistViewCountries(data)
+          : fetchQuery(data),
     );
   }
 
@@ -254,6 +246,7 @@ class _HomePageState extends State<HomePage> {
     String _query = """
       query{
   continents{
+    code
     name
     countries{
     code
@@ -303,12 +296,12 @@ class _HomePageState extends State<HomePage> {
 
         updateData(data, _countries);
 
-        return listViewCountries(data);
+        return filteredlistViewCountries(data, "AS");
       },
     );
   }
 
-  listViewCountries(MainProvider data) {
+  sortedlistViewCountries(MainProvider data) {
     return ListView.builder(
       itemCount: data.sortedCountries.length,
       // itemExtent: 100,
@@ -321,6 +314,7 @@ class _HomePageState extends State<HomePage> {
         return Container(
           child: Column(
             children: [
+              Divider(),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 15, vertical: 7),
                 // height: 25,
@@ -340,7 +334,8 @@ class _HomePageState extends State<HomePage> {
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
                   itemBuilder: (context, indexCountry) {
-                    return countryItem(indexCountry, firstLetter);
+                    return countryItem(indexCountry,
+                        firstLetter: firstLetter, isSorted: true);
                   }),
               Divider(),
             ],
@@ -350,25 +345,58 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget countryItem(int index, String firstLetter) {
+  filteredlistViewCountries(MainProvider data, String continentCode) {
+    data.setContinentCode(continentCode);
+    //
+    return ListView.builder(
+      itemCount: data.filterByContinents.length,
+      // itemExtent: 100,
+      itemBuilder: (context, indexCountry) {
+        //
+        return countryItem(indexCountry);
+      },
+    );
+  }
+
+  Widget countryItem(int index,
+      {String firstLetter = "", bool isSorted = false}) {
     //
 
     //
     return Consumer<MainProvider>(builder: ((context, data, child) {
-      List _countries = List.from(data.getFavouritedCountries);
       //
-      String code = data.sortedCountries[firstLetter][index]["code"];
-      String name = data.sortedCountries[firstLetter][index]["name"];
-      String flag = data.sortedCountries[firstLetter][index]["emoji"];
-      bool isFavourited = _countries.contains(data.getCountries[index]);
+      String code;
+      String name;
+      String flag;
+
+      if (isSorted) {
+        code = data.sortedCountries[firstLetter][index]["code"];
+        name = data.sortedCountries[firstLetter][index]["name"];
+        flag = data.sortedCountries[firstLetter][index]["emoji"];
+      } else {
+        code = data.filterByContinents[index]["code"];
+        name = data.filterByContinents[index]["name"];
+        flag = data.filterByContinents[index]["emoji"];
+      }
+
+      bool isFavourited =
+          data.getFavouritedCountries.contains(data.getCountries[index]);
       //
       makeAsFavourite() {
         if (isFavourited) {
-          data.removeFromFavourite(data.sortedCountries[firstLetter][index]);
+          if (isSorted) {
+            data.removeFromFavourite(data.sortedCountries[firstLetter][index]);
+          } else {
+            data.removeFromFavourite(data.filterByContinents[index]);
+          }
           //
 
         } else {
-          data.setAsFavourite(data.sortedCountries[firstLetter][index]);
+          if (isSorted) {
+            data.setAsFavourite(data.sortedCountries[firstLetter][index]);
+          } else {
+            data.setAsFavourite(data.filterByContinents[index]);
+          }
           //
           final snackBar = SnackBar(
             content: Text("$flag $name added to favourites"),
