@@ -6,7 +6,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:pretest_kitalulus_2/providers/main_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:collection/collection.dart';
@@ -20,22 +19,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final httpLink = HttpLink("https://countries.trevorblades.com/");
-
-    ValueNotifier<GraphQLClient> client =
-        ValueNotifier(GraphQLClient(cache: GraphQLCache(), link: httpLink));
-
-    return GraphQLProvider(
-      client: client,
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (context) => MainProvider())
-        ],
-        child: const MaterialApp(
-          title: 'Country App',
-          debugShowCheckedModeBanner: false,
-          home: RootPage(),
-        ),
+    return MultiProvider(
+      providers: [ChangeNotifierProvider(create: (context) => MainProvider())],
+      child: const MaterialApp(
+        title: 'Country App',
+        debugShowCheckedModeBanner: false,
+        home: RootPage(),
       ),
     );
   }
@@ -62,9 +51,14 @@ class _RootPageState extends State<RootPage> {
   @override
   void initState() {
     // TODO: implement initState
+    super.initState();
+    fetchDatas();
+  }
+
+  Future fetchDatas() async {
+    Provider.of<MainProvider>(context, listen: false).fetchCountries();
     Provider.of<MainProvider>(context, listen: false)
         .fetchFavouritedCountries();
-    super.initState();
   }
 
   @override
@@ -180,7 +174,6 @@ class _HomePageState extends State<HomePage> {
   //
   //
   Widget appbarTitle = const Text("Country App");
-  final PageController pageController = PageController();
   //
 
   @override
@@ -192,22 +185,46 @@ class _HomePageState extends State<HomePage> {
           height: MediaQuery.of(context).size.height,
           width: MediaQuery.of(context).size.width,
           child: Column(
-            children: [floatingButtons(), Expanded(child: datasView(data))],
+            children: [floatingButtons(), Expanded(child: datasView())],
           ),
         ),
       ),
     );
   }
 
-  Widget datasView(MainProvider data) {
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      child: data.isAlreadyFetched
-          ? data.viewStatus == ViewStatus.sort
-              ? sortedlistViewCountries(data)
-              : filteredlistViewCountries()
-          : fetchQuery(data),
-    );
+  Widget datasView() {
+    return Consumer<MainProvider>(builder: (context, data, child) {
+      Widget widget = Container();
+
+      switch (data.graphqlStatus) {
+        case GraphqlStatus.isLoading:
+          widget = Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            // ignore: prefer_const_literals_to_create_immutables
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(
+                height: 15,
+              ),
+              const Text("Fetching data...")
+            ],
+          );
+          break;
+
+        case GraphqlStatus.completed:
+          if (data.viewStatus == ViewStatus.sort) {
+            widget = sortedlistViewCountries(data);
+          } else {
+            widget = filteredlistViewCountries(data);
+          }
+          break;
+
+        default:
+          widget = Text("error");
+      }
+
+      return Container(width: MediaQuery.of(context).size.width, child: widget);
+    });
   }
 
   Widget floatingButtons() {
@@ -293,64 +310,64 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget fetchQuery(MainProvider data) {
-    String _query = """
-      query{
-  continents{
-    code
-    name
-    countries{
-    code
-    emoji
-    name
-    states{
-      name
-    }
-    languages{
-      name
-      native
-    }
-    continent{
-        name
-    }
-  }
-  }
-}
-    """;
-    //
-    return Query(
-      options: QueryOptions(document: gql(_query)),
-      builder: (QueryResult result,
-          {VoidCallback? refetch, FetchMore? fetchMore}) {
-        //
-        if (result.hasException) {
-          return Text(result.exception.toString());
-        }
+//   Widget fetchQuery(MainProvider data) {
+//     String _query = """
+//       query{
+//   continents{
+//     code
+//     name
+//     countries{
+//     code
+//     emoji
+//     name
+//     states{
+//       name
+//     }
+//     languages{
+//       name
+//       native
+//     }
+//     continent{
+//         name
+//     }
+//   }
+//   }
+// }
+//     """;
+//     //
+//     return Query(
+//       options: QueryOptions(document: gql(_query)),
+//       builder: (QueryResult result,
+//           {VoidCallback? refetch, FetchMore? fetchMore}) {
+//         //
+//         if (result.hasException) {
+//           return Text(result.exception.toString());
+//         }
 
-        if (result.isLoading) {
-          return Transform.scale(
-              scale: 0.1,
-              child: CircularProgressIndicator(
-                strokeWidth: 55,
-              ));
-        }
+//         if (result.isLoading) {
+//           return Transform.scale(
+//               scale: 0.1,
+//               child: CircularProgressIndicator(
+//                 strokeWidth: 55,
+//               ));
+//         }
 
-        //
-        debugPrint("isi data");
-        debugPrint(result.data?.keys.toString());
+//         //
+//         debugPrint("isi data");
+//         debugPrint(result.data?.keys.toString());
 
-        List? _countries = result.data!["continents"];
+//         List? _countries = result.data!["continents"];
 
-        if (_countries == null || _countries.length < 1) {
-          return const Text("data not found");
-        }
+//         if (_countries == null || _countries.length < 1) {
+//           return const Text("data not found");
+//         }
 
-        updateData(data, _countries);
+//         updateData(data, _countries);
 
-        return sortedlistViewCountries(data);
-      },
-    );
-  }
+//         return sortedlistViewCountries(data);
+//       },
+//     );
+//   }
 
   sortedlistViewCountries(MainProvider data) {
     return ListView.builder(
@@ -394,18 +411,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  filteredlistViewCountries() {
+  filteredlistViewCountries(MainProvider data) {
     //
-    return Consumer<MainProvider>(builder: (context, data, _) {
-      return ListView.builder(
-        itemCount: data.filterByContinents.length,
-        // itemExtent: 100,
-        itemBuilder: (context, indexCountry) {
-          //
-          return countryItem(indexCountry);
-        },
-      );
-    });
+    debugPrint("isi filterByContinents di widget");
+    debugPrint(data.filterByContinents.toString());
+    return ListView.builder(
+      itemCount: data.filterByContinents.length,
+      // itemExtent: 100,
+      itemBuilder: (context, index) {
+        debugPrint("masuk ke dalame cardItemmmmm");
+
+        //
+        return countryItem(index);
+      },
+    );
   }
 
   Widget countryItem(int index,
@@ -490,10 +509,6 @@ class _HomePageState extends State<HomePage> {
       );
     }));
   }
-
-  Future updateData(MainProvider data, List countries) async {
-    data.fetchCountries = List.from(countries);
-  }
 }
 
 class FavouritesPage extends StatelessWidget {
@@ -525,16 +540,13 @@ class FavouritesPage extends StatelessWidget {
                   title: Text(data.getFavouritedCountries[index]["name"]),
                   trailing: IconButton(
                       onPressed: () {
-                        data.removeFromFavourite(
-                            data.getFavouritedCountries[index]["code"]);
-
                         showDialog(
                             context: context,
                             builder: (BuildContext ctx) {
                               return AlertDialog(
-                                title: Text("select a continent"),
+                                title: Text("REMOVE CONFIRMATION"),
                                 content: Text("""
-are you sure want to delete $flag $name
+are you sure want to remove $flag $name ?
 """),
                                 actions: [
                                   TextButton(

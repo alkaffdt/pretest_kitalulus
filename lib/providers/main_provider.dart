@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:graphql/client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MainProvider extends ChangeNotifier {
@@ -10,7 +11,7 @@ class MainProvider extends ChangeNotifier {
   List _countries = [];
   List _favouritedCountries = [];
   //
-  bool isAlreadyFetched = false;
+  GraphqlStatus graphqlStatus = GraphqlStatus.isLoading;
   //
   ViewStatus viewStatus = ViewStatus.sort;
   String _filteredContinentCode = "";
@@ -19,6 +20,77 @@ class MainProvider extends ChangeNotifier {
   //
   //
   //
+
+  fetchCountries() async {
+    await connectToGraphql();
+
+    fetchFavouritedCountries();
+
+    _masterContinents.forEach((countries) {
+      countries["countries"].forEach((nation) {
+        nation["continent"] = nation["continent"]["name"];
+        _masterCountries.add(nation);
+      });
+    });
+
+    _countries = List.from(_masterCountries);
+    graphqlStatus = GraphqlStatus.completed;
+    //
+    notifyListeners();
+  }
+
+  connectToGraphql() async {
+    Future.delayed(Duration(seconds: 5));
+    const String _query = """
+      query{
+  continents{
+    code
+    name
+    countries{
+    code
+    emoji
+    name
+    states{
+      name
+    }
+    languages{
+      name
+      native
+    }
+    continent{
+        name
+    }
+  }
+  }
+}
+    """;
+
+    final _httpLink = HttpLink(
+      "https://countries.trevorblades.com/",
+    );
+
+    final GraphQLClient client = GraphQLClient(
+
+        /// **NOTE** The default store is the InMemoryStore, which does NOT persist to disk
+        cache: GraphQLCache(),
+        link: _httpLink);
+
+    final QueryOptions options = QueryOptions(document: gql(_query));
+
+    final QueryResult result = await client.query(options);
+
+    if (result.hasException) {
+      print(result.exception.toString());
+      graphqlStatus = GraphqlStatus.error;
+    }
+
+    if (result.isLoading) {
+      graphqlStatus = GraphqlStatus.isLoading;
+    }
+
+    _masterContinents = result.data!["continents"] as List<dynamic>;
+  }
+
   List get getFavouritedCountries {
     return _favouritedCountries;
   }
@@ -47,8 +119,8 @@ class MainProvider extends ChangeNotifier {
   }
 
   setContinentCode(String code) {
-    _filteredContinentCode = code;
     viewStatus = ViewStatus.filter;
+    _filteredContinentCode = code;
     notifyListeners();
   }
 
@@ -67,24 +139,6 @@ class MainProvider extends ChangeNotifier {
     return _filtered;
   }
 
-  set fetchCountries(List<Map> continents) {
-    // Obtaincountries preferences.
-    _masterContinents = List.from(continents);
-
-    fetchFavouritedCountries();
-
-    continents.forEach((countries) {
-      countries["countries"].forEach((nation) {
-        nation["continent"] = nation["continent"]["name"];
-        _masterCountries.add(nation);
-      });
-    });
-
-    _countries = List.from(_masterCountries);
-    isAlreadyFetched = true;
-    //
-  }
-
   fetchFavouritedCountries() async {
     // Obtain stored datas.
     final prefs = await SharedPreferences.getInstance();
@@ -97,6 +151,8 @@ class MainProvider extends ChangeNotifier {
   }
 
   findCountry(keyword) {
+    //
+    viewStatus = ViewStatus.sort;
     //
     _countries = _masterCountries
         .where((item) => item["name"].toLowerCase().contains(keyword))
@@ -149,3 +205,5 @@ class MainProvider extends ChangeNotifier {
 enum ViewStatus { sort, filter }
 
 enum Continents { asia, africa, europe, america, australia, all }
+
+enum GraphqlStatus { completed, error, isLoading }
