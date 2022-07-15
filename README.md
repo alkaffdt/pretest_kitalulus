@@ -7,8 +7,8 @@
  - [x] user can sort by name and group by the continent  
  - [x] user can filter by the continent, so I can see only the list of selected continent 
  - [x] user can see list of favourite country
+ - [x] user can save fav country and remove it from my favourites list
 
-user I can save fav country and remove it from my favourites list
 
 list of libraries/dependencies that i used this project:
 * shared_preferences: ^2.0.15
