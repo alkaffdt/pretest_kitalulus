@@ -282,13 +282,13 @@ class _HomePageState extends State<HomePage> {
                             // shrinkWrap: true,
                             itemBuilder: (context, index) {
                               String nameContinent =
-                                  data.getContinents[index]["name"];
+                                  data.getContinents[index].name;
                               return ListTile(
                                 leading: Icon(Icons.map),
                                 title: Text(nameContinent),
                                 onTap: () {
                                   data.setContinentCode(
-                                      data.getContinents[index]["code"]);
+                                      data.getContinents[index].code);
                                   //
                                   Navigator.pop(context);
                                 },
@@ -443,17 +443,17 @@ class _HomePageState extends State<HomePage> {
       // debugPrint(data.getFavouritedCountries.toString());
 
       if (isSorted) {
-        code = data.sortedCountries[firstLetter][index]["code"];
-        name = data.sortedCountries[firstLetter][index]["name"];
-        flag = data.sortedCountries[firstLetter][index]["emoji"];
-        isFavourited = data.getFavouritedCountries
-            .any((element) => element["code"] == code);
+        code = data.sortedCountries[firstLetter][index].code;
+        name = data.sortedCountries[firstLetter][index].name;
+        flag = data.sortedCountries[firstLetter][index].emoji;
+        isFavourited =
+            data.getFavouritedCountries.any((element) => element.code == code);
       } else {
-        code = data.filterByContinents[index]["code"];
-        name = data.filterByContinents[index]["name"];
-        flag = data.filterByContinents[index]["emoji"];
-        isFavourited = data.getFavouritedCountries
-            .any((element) => element["code"] == code);
+        code = data.filterByContinents[index].code;
+        name = data.filterByContinents[index].name;
+        flag = data.filterByContinents[index].emoji;
+        isFavourited =
+            data.getFavouritedCountries.any((element) => element.code == code);
       }
 
       //
@@ -526,9 +526,9 @@ class FavouritesPage extends StatelessWidget {
             itemCount: data.getFavouritedCountries.length,
             itemExtent: 101,
             itemBuilder: ((context, index) {
-              String code = data.getFavouritedCountries[index]["code"];
-              String flag = data.getFavouritedCountries[index]["emoji"];
-              String name = data.getFavouritedCountries[index]["name"];
+              String code = data.getFavouritedCountries[index].code;
+              String flag = data.getFavouritedCountries[index].emoji;
+              String name = data.getFavouritedCountries[index].name;
               //
               return Card(
                 child: ListTile(
@@ -537,7 +537,7 @@ class FavouritesPage extends StatelessWidget {
                     flag,
                     style: const TextStyle(fontSize: 61),
                   ),
-                  title: Text(data.getFavouritedCountries[index]["name"]),
+                  title: Text(data.getFavouritedCountries[index].name),
                   trailing: IconButton(
                       onPressed: () {
                         showDialog(

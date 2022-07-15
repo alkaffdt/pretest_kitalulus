@@ -3,13 +3,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql/client.dart';
+import 'package:pretest_kitalulus_2/models/country_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MainProvider extends ChangeNotifier {
-  List _masterCountries = [];
-  List _masterContinents = [];
-  List _countries = [];
-  List _favouritedCountries = [];
+  List<Countries> _masterCountries = [];
+  List<Continents> _masterContinents = [];
+  List<Countries> _countries = [];
+  List<Countries> _favouritedCountries = [];
   //
   GraphqlStatus graphqlStatus = GraphqlStatus.isLoading;
   //
@@ -22,15 +23,21 @@ class MainProvider extends ChangeNotifier {
   //
 
   fetchCountries() async {
-    await connectToGraphql();
+    _masterContinents = await connectToGraphql();
+    debugPrint("isi _masterContinent model baru : ");
+    debugPrint(_masterContinents[0].countries[0].name);
 
-    fetchFavouritedCountries();
+    await fetchFavouritedCountries();
 
-    _masterContinents.forEach((countries) {
-      countries["countries"].forEach((nation) {
-        nation["continent"] = nation["continent"]["name"];
-        _masterCountries.add(nation);
-      });
+    // _masterContinents.forEach((countries) {
+    //   countries["countries"].forEach((nation) {
+    //     nation["continent"] = nation["continent"]["name"];
+    //     _masterCountries.add(nation);
+    //   });
+    // });
+
+    _masterContinents.forEach((_continent) {
+      _masterCountries.addAll(_continent.countries);
     });
 
     _countries = List.from(_masterCountries);
@@ -39,7 +46,7 @@ class MainProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  connectToGraphql() async {
+  Future connectToGraphql() async {
     Future.delayed(Duration(seconds: 5));
     const String _query = """
       query{
@@ -59,6 +66,7 @@ class MainProvider extends ChangeNotifier {
     }
     continent{
         name
+        code
     }
   }
   }
@@ -88,16 +96,21 @@ class MainProvider extends ChangeNotifier {
       graphqlStatus = GraphqlStatus.isLoading;
     }
 
-    _masterContinents = result.data!["continents"] as List<dynamic>;
+    debugPrint("isi result.data['continents']");
+    debugPrint(result.data!["continents"].runtimeType.toString());
+
+    return Data.fromJson(result.data!).continents;
+
+    // _masterContinents = result.data!["continents"] as List<dynamic>;
   }
 
-  List get getFavouritedCountries {
+  List<Countries> get getFavouritedCountries {
     return _favouritedCountries;
   }
 
-  List get getCountries {
-    List _sortedData = List.from(_countries);
-    _sortedData.sort((a, b) => a["name"].compareTo(b["name"]));
+  List<Countries> get getCountries {
+    List<Countries> _sortedData = List.from(_countries);
+    _sortedData.sort((a, b) => a.name.compareTo(b.name));
     return _sortedData;
   }
 
@@ -105,7 +118,7 @@ class MainProvider extends ChangeNotifier {
     Map<String, List> _sortedByLetter = {};
     //
     getCountries.forEach((item) {
-      String firstLetter = item["name"].substring(0, 1);
+      String firstLetter = item.name.substring(0, 1);
 
       if (_sortedByLetter.containsKey(firstLetter)) {
         _sortedByLetter[firstLetter]?.add(item);
@@ -124,30 +137,19 @@ class MainProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List get getContinents {
+  List<Continents> get getContinents {
     return _masterContinents;
   }
 
-  List get filterByContinents {
-    List _filtered = [];
+  List<Countries> get filterByContinents {
+    List<Countries> _filtered = [];
     //
-    Map _cont = _masterContinents
-        .firstWhere((continent) => continent["code"] == _filteredContinentCode);
+    Continents _cont = _masterContinents
+        .firstWhere((continent) => continent.code == _filteredContinentCode);
 
-    _filtered = _cont["countries"];
+    _filtered = _cont.countries;
 
     return _filtered;
-  }
-
-  fetchFavouritedCountries() async {
-    // Obtain stored datas.
-    final prefs = await SharedPreferences.getInstance();
-    String? storedData = await prefs.getString("storedCountries");
-
-    if (storedData != null) {
-      _favouritedCountries =
-          jsonDecode(prefs.getString("storedCountries").toString()) as List;
-    }
   }
 
   findCountry(keyword) {
@@ -155,7 +157,7 @@ class MainProvider extends ChangeNotifier {
     viewStatus = ViewStatus.sort;
     //
     _countries = _masterCountries
-        .where((item) => item["name"].toLowerCase().contains(keyword))
+        .where((item) => item.name.toLowerCase().contains(keyword))
         .toList();
 
     notifyListeners();
@@ -181,29 +183,57 @@ class MainProvider extends ChangeNotifier {
 
   //
 
+  fetchFavouritedCountries() async {
+    // Obtain stored datas.
+    final prefs = await SharedPreferences.getInstance();
+    String? storedData = await prefs.getString("storedCountries4");
+    debugPrint("isi storedData");
+    debugPrint(storedData);
+    List<dynamic> _temp = [];
+    List<Countries> _convertedTemp = [];
+
+    if (storedData != null) {
+      _temp = jsonDecode(storedData);
+      _temp.forEach((item) {
+        debugPrint(
+            "{jumlah = ${_temp.length}}isi item dari hasil konversi JSON :");
+        debugPrint(item.toString());
+        Countries _convertedToModel = Countries.fromJson(item);
+        _convertedTemp.add(_convertedToModel);
+      });
+    }
+
+    _favouritedCountries = List.from(_convertedTemp);
+
+    // notifyListeners();
+  }
+
   setAsFavourite(code) async {
     // Obtain shared preferences.
     final prefs = await SharedPreferences.getInstance();
+    List _convertedList = [];
     //
     _favouritedCountries.add(code);
+    _favouritedCountries.forEach((item) {
+      _convertedList.add(Countries.toMap(item));
+    });
     //
-    prefs.setString("storedCountries", jsonEncode(_favouritedCountries));
+    prefs.setString("storedCountries4", jsonEncode(_convertedList));
     notifyListeners();
   }
 
-  removeFromFavourite(Map country) async {
+  removeFromFavourite(Countries country) async {
     //
     final prefs = await SharedPreferences.getInstance();
 
-    _favouritedCountries
-        .removeWhere((element) => element["code"] == country["code"]);
-    prefs.setString("storedCountries", jsonEncode(_favouritedCountries));
+    _favouritedCountries.removeWhere((element) => element.name == country.name);
+    prefs.setString("storedCountries4", jsonEncode(_favouritedCountries));
     notifyListeners();
   }
 }
 
 enum ViewStatus { sort, filter }
 
-enum Continents { asia, africa, europe, america, australia, all }
+// enum Continents { asia, africa, europe, america, australia, all }
 
 enum GraphqlStatus { completed, error, isLoading }
