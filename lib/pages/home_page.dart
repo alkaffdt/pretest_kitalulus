@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pretest_kitalulus_2/providers/main_provider.dart';
+import 'package:pretest_kitalulus_2/providers/root_provider.dart';
+import 'package:pretest_kitalulus_2/widgets/floating_filter_button.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -14,7 +16,17 @@ class _HomePageState extends State<HomePage> {
   //
   //
   Widget appbarTitle = const Text("Country App");
+  ScrollController scroll = ScrollController();
+  double filterbarOpacity = 1;
   //
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    //
+    addScrollListener();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +36,18 @@ class _HomePageState extends State<HomePage> {
         builder: (context, data, _) => Container(
           height: MediaQuery.of(context).size.height,
           width: MediaQuery.of(context).size.width,
-          child: Column(
-            children: [floatingButtons(), Expanded(child: datasView())],
+          child: Stack(
+            children: [
+              Expanded(child: datasView()),
+              Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 25),
+                    child: Opacity(
+                        opacity: filterbarOpacity,
+                        child: FloatingSortFilterButton()),
+                  )),
+            ],
           ),
         ),
       ),
@@ -65,89 +87,6 @@ class _HomePageState extends State<HomePage> {
 
       return Container(width: MediaQuery.of(context).size.width, child: widget);
     });
-  }
-
-  Widget floatingButtons() {
-    Widget button(
-        {required String label,
-        required icon,
-        required ontap,
-        isRight = false}) {
-      return SizedBox(
-        height: 55,
-        width: 175,
-        child: TextButton.icon(
-            style: ButtonStyle(
-                overlayColor: MaterialStateProperty.all(Colors.lightBlue),
-                // padding: MaterialStateProperty.all<EdgeInsets>(
-                //     EdgeInsets.symmetric(horizontal: 55)),
-                backgroundColor: MaterialStateProperty.all(Colors.blue),
-                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                    RoundedRectangleBorder(
-                        borderRadius: isRight
-                            ? BorderRadius.only(
-                                bottomRight: Radius.circular(15))
-                            : BorderRadius.only(
-                                bottomLeft: Radius.circular(15)),
-                        side: BorderSide(color: Colors.blue)))),
-            onPressed: ontap,
-            icon: Icon(
-              icon,
-              color: Colors.white,
-            ),
-            label: Text(
-              label,
-              style: TextStyle(color: Colors.white),
-            )),
-      );
-    }
-
-    return Container(
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        button(
-            label: "filter",
-            icon: Icons.filter_alt,
-            ontap: () {
-              var data = Provider.of<MainProvider>(context, listen: false);
-              showDialog(
-                  context: context,
-                  builder: (BuildContext ctx) {
-                    return AlertDialog(
-                      title: Text("select a continent"),
-                      content: Container(
-                        height: MediaQuery.of(context).size.height * 0.5,
-                        width: MediaQuery.of(context).size.width * 0.71,
-                        child: ListView.builder(
-                            itemCount: data.getContinents.length,
-                            // shrinkWrap: true,
-                            itemBuilder: (context, index) {
-                              String nameContinent =
-                                  data.getContinents[index].name;
-                              return ListTile(
-                                leading: Icon(Icons.map),
-                                title: Text(nameContinent),
-                                onTap: () {
-                                  data.setContinentCode(
-                                      data.getContinents[index].code);
-                                  //
-                                  Navigator.pop(context);
-                                },
-                              );
-                            }),
-                      ),
-                    );
-                  });
-            }),
-        button(
-            label: "sort",
-            icon: Icons.sort,
-            ontap: () {
-              var data = Provider.of<MainProvider>(context, listen: false);
-              data.sortCountries();
-            },
-            isRight: true),
-      ]),
-    );
   }
 
 //   Widget fetchQuery(MainProvider data) {
@@ -211,8 +150,10 @@ class _HomePageState extends State<HomePage> {
 
   sortedlistViewCountries(MainProvider data) {
     return ListView.builder(
+      controller: scroll,
       itemCount: data.sortedCountries.length,
       // itemExtent: 100,
+      padding: EdgeInsets.only(top: 95),
       itemBuilder: (context, indexLetter) {
         String firstLetter = data.sortedCountries.keys.elementAt(indexLetter);
         //
@@ -256,6 +197,8 @@ class _HomePageState extends State<HomePage> {
     debugPrint("isi filterByContinents di widget");
     debugPrint(data.filterByContinents.toString());
     return ListView.builder(
+      controller: scroll,
+      padding: EdgeInsets.only(top: 95),
       itemCount: data.filterByContinents.length,
       // itemExtent: 100,
       itemBuilder: (context, index) {
@@ -317,9 +260,8 @@ class _HomePageState extends State<HomePage> {
             action: SnackBarAction(
                 label: "see favourites",
                 onPressed: () {
-                  widget.pageController.animateToPage(1,
-                      duration: Duration(milliseconds: 333),
-                      curve: Curves.linear);
+                  Provider.of<RootProvider>(context, listen: false)
+                      .changeToPage(1);
                 }),
           );
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -348,5 +290,25 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     }));
+  }
+
+  addScrollListener() {
+    scroll.addListener(() {
+      double _recentPosition = scroll.position.pixels;
+
+      debugPrint("posisi scroll saat ini");
+      debugPrint(_recentPosition.toString());
+      //
+      if (_recentPosition <= 100 && _recentPosition > 0) {
+        setState(() {
+          filterbarOpacity = 1 - (_recentPosition * 0.01);
+        });
+        debugPrint("posisi opacity sekarang = " + filterbarOpacity.toString());
+      } else if (_recentPosition <= 0) {
+        setState(() {
+          filterbarOpacity = 1;
+        });
+      }
+    });
   }
 }

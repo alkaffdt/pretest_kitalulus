@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pretest_kitalulus_2/pages/favourites_page.dart';
 import 'package:pretest_kitalulus_2/pages/home_page.dart';
+import 'package:pretest_kitalulus_2/providers/root_provider.dart';
+import 'package:pretest_kitalulus_2/widgets/bottomnavigationbar.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/main_provider.dart';
@@ -18,7 +20,6 @@ class _RootPageState extends State<RootPage> {
   var pageController = PageController(
     initialPage: 0,
   );
-  int currentPage = 0;
   //
   Widget appbarTitle = Text("Countries App");
   bool clickedSearchButton = false;
@@ -49,39 +50,17 @@ class _RootPageState extends State<RootPage> {
           )
         ],
       ),
-      body: PageView(
-        controller: pageController,
-        scrollDirection: Axis.horizontal,
-        children: [HomePage(pageController), FavouritesPage()],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed, // Shifting
-          // selectedLabelStyle: TextStyle(color: Colors.grey),
-          currentIndex: 0,
-          onTap: (index) {
-            setState(() {
-              currentPage = index;
-            });
-            pageController.animateToPage(index,
-                duration: Duration(milliseconds: 333), curve: Curves.linear);
+      body: Consumer<RootProvider>(builder: (context, root, child) {
+        return PageView(
+          controller: root.pageController,
+          scrollDirection: Axis.horizontal,
+          children: [HomePage(pageController), FavouritesPage()],
+          onPageChanged: (int index) {
+            root.setIndexPage(index);
           },
-          // ignore: prefer_const_literals_to_create_immutables
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(
-                Icons.flag,
-                color: currentPage == 0 ? Colors.blue : Colors.grey,
-              ),
-              label: "countries",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(
-                Icons.favorite,
-                color: currentPage == 1 ? Colors.red : Colors.grey,
-              ),
-              label: "favourite",
-            )
-          ]),
+        );
+      }),
+      bottomNavigationBar: Navbar(),
     );
   }
 

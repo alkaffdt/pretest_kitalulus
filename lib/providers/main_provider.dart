@@ -47,7 +47,6 @@ class MainProvider extends ChangeNotifier {
   }
 
   Future connectToGraphql() async {
-    Future.delayed(Duration(seconds: 5));
     const String _query = """
       query{
   continents{

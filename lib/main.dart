@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pretest_kitalulus_2/pages/root_page.dart';
 import 'package:pretest_kitalulus_2/providers/main_provider.dart';
+import 'package:pretest_kitalulus_2/providers/root_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:collection/collection.dart';
 
@@ -21,7 +22,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (context) => MainProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (context) => MainProvider()),
+        ChangeNotifierProvider(create: (context) => RootProvider())
+      ],
       child: const MaterialApp(
         title: 'Country App',
         debugShowCheckedModeBanner: false,
