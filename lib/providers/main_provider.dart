@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql/client.dart';
 import 'package:pretest_kitalulus_2/models/country_model.dart';
+import 'package:pretest_kitalulus_2/services/api_services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MainProvider extends ChangeNotifier {
@@ -23,84 +24,31 @@ class MainProvider extends ChangeNotifier {
   //
 
   fetchCountries() async {
-    _masterContinents = await connectToGraphql();
-    debugPrint("isi _masterContinent model baru : ");
-    debugPrint(_masterContinents[0].countries[0].name);
+    _masterContinents = await ApiServices.connectToGraphql();
 
-    await fetchFavouritedCountries();
+    if (_masterContinents.length < 1) {
+      graphqlStatus = GraphqlStatus.error;
+    } else {
+      graphqlStatus = GraphqlStatus.completed;
+      await fetchFavouritedCountries();
 
-    // _masterContinents.forEach((countries) {
-    //   countries["countries"].forEach((nation) {
-    //     nation["continent"] = nation["continent"]["name"];
-    //     _masterCountries.add(nation);
-    //   });
-    // });
+      // _masterContinents.forEach((countries) {
+      //   countries["countries"].forEach((nation) {
+      //     nation["continent"] = nation["continent"]["name"];
+      //     _masterCountries.add(nation);
+      //   });
+      // });
 
-    _masterContinents.forEach((_continent) {
-      _masterCountries.addAll(_continent.countries);
-    });
+      _masterContinents.forEach((_continent) {
+        _masterCountries.addAll(_continent.countries);
+      });
 
-    _countries = List.from(_masterCountries);
-    graphqlStatus = GraphqlStatus.completed;
+      _countries = List.from(_masterCountries);
+      graphqlStatus = GraphqlStatus.completed;
+    }
+
     //
     notifyListeners();
-  }
-
-  Future connectToGraphql() async {
-    const String _query = """
-      query{
-  continents{
-    code
-    name
-    countries{
-    code
-    emoji
-    name
-    states{
-      name
-    }
-    languages{
-      name
-      native
-    }
-    continent{
-        name
-        code
-    }
-  }
-  }
-}
-    """;
-
-    final _httpLink = HttpLink(
-      "https://countries.trevorblades.com/",
-    );
-
-    final GraphQLClient client = GraphQLClient(
-
-        /// **NOTE** The default store is the InMemoryStore, which does NOT persist to disk
-        cache: GraphQLCache(),
-        link: _httpLink);
-
-    final QueryOptions options = QueryOptions(document: gql(_query));
-
-    final QueryResult result = await client.query(options);
-
-    if (result.hasException) {
-      print(result.exception.toString());
-      graphqlStatus = GraphqlStatus.error;
-    }
-
-    if (result.isLoading) {
-      graphqlStatus = GraphqlStatus.isLoading;
-    }
-
-    debugPrint("isi result.data['continents']");
-    debugPrint(result.data!["continents"].runtimeType.toString());
-
-    return Data.fromJson(result.data!).continents;
-
-    // _masterContinents = result.data!["continents"] as List<dynamic>;
   }
 
   List<Countries> get getFavouritedCountries {
