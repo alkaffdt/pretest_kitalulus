@@ -8,6 +8,7 @@
  - [x] user can filter by the continent, so I can see only the list of selected continent 
  - [x] user can see list of favourite country
  - [x] user can save fav country and remove it from my favourites list
+ - [x] added unit-test
 
 
 list of libraries/dependencies that i used this project:
@@ -16,9 +17,9 @@ list of libraries/dependencies that i used this project:
 link : [https://pub.dev/packages/shared_preferences](https://)
 
 
-* graphql_flutter: ^5.1.0
+* graphql: ^5.1.1
 	- to access the graphql endpoint.
-link : [https://pub.dev/packages/graphql_flutterÏ](https://)
+link : [https://pub.dev/packages/graphql](https://)
 
 
 * provider: ^6.0.3 
